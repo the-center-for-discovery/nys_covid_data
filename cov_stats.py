@@ -8,6 +8,28 @@ from bokeh.plotting import figure, output_file, show, save
 from bokeh.models import HoverTool
 from math import pi
 
+class EST5EDT(datetime.tzinfo):
+
+    def utcoffset(self, dt):
+        return datetime.timedelta(hours=-5) + self.dst(dt)
+
+    def dst(self, dt):
+        d = datetime.datetime(dt.year, 3, 8)  # 2nd Sunday in March
+        self.dston = d + datetime.timedelta(days=6-d.weekday())
+        d = datetime.datetime(dt.year, 11, 1)  # 1st Sunday in Nov
+        self.dstoff = d + datetime.timedelta(days=6-d.weekday())
+        if self.dston <= dt.replace(tzinfo=None) < self.dstoff:
+            return datetime.timedelta(hours=1)
+        else:
+            return datetime.timedelta(0)
+
+    def tzname(self, dt):
+        return 'EST5EDT'
+
+
+t_est = datetime.datetime.now(tz=EST5EDT())
+t_str = t_est.strftime("%Y-%m-%d, %H:%M:%S")
+
 two_days = datetime.datetime.today() - datetime.timedelta(days=2)
 one_day = datetime.datetime.today() - datetime.timedelta(days=1)
 
@@ -17,82 +39,91 @@ one_day_str = one_day.strftime("%Y-%m-%dT00:00:00.000")
 url_two = 'https://health.data.ny.gov/resource/xdss-u53e.json?test_date=' + two_day_str
 url_one = 'https://health.data.ny.gov/resource/xdss-u53e.json?test_date=' + one_day_str
 
-with request.urlopen(url_one) as response:
-    source = response.read()
-    data = json.loads(source)
-
-if len(data) == 0:
-    with request.urlopen(url_two) as response:
+def get_json():
+  with request.urlopen(url_one) as response:
       source = response.read()
       data = json.loads(source)
-else:
-    data = json.loads(source)
 
-with open ("covid.json", 'w') as outfile:
-  json.dump(data, outfile)
+  if len(data) == 0:
+      with request.urlopen(url_two) as response:
+        source = response.read()
+        data = json.loads(source)
+  else:
+      data = json.loads(source)
 
-with open('covid.json') as json_data:
-    d = json.load(json_data)
-    print(type(d))
-    print(type(d[0]))
-    print(json.dumps(d[0], indent=2, sort_keys = True))
+  with open ("covid.json", 'w') as outfile:
+    json.dump(data, outfile)
 
+  with open('covid.json') as json_data:
+      d = json.load(json_data)
 
-filename = "County Stats.csv"
-fw = open(filename, 'w')
-cf = csv.writer(fw, lineterminator='\n')
+  return d
 
-cd = csv.writer(fw, lineterminator='\n')
+def make_csv():
 
-# write the header
-cf.writerow(["County", "New Positives", "All Positives", "New Tests", "All Tests"])
+  filename = "County Stats.csv"
+  fw = open(filename, 'w')
+  cf = csv.writer(fw, lineterminator='\n')
 
-for counties in d:
-  cnty = counties['county']
-  date = counties['test_date']
-  new_pos = counties['new_positives']
-  cum_pos = counties['cumulative_number_of_positives']
-  new_tests = counties['total_number_of_tests']
-  cum_tests = counties['cumulative_number_of_tests']  
-  if date == two_day_str:
-    cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
-  elif date == one_day_str:
-    cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
+  cd = csv.writer(fw, lineterminator='\n')
 
-fw.close()
+  # write the header
+  cf.writerow(["County", "New Positives", "All Positives", "New Tests", "All Tests"])
 
-df = pd.read_csv("County Stats.csv")
+  for counties in get_json():
+    cnty = counties['county']
+    date = counties['test_date']
+    new_pos = counties['new_positives']
+    cum_pos = counties['cumulative_number_of_positives']
+    new_tests = counties['total_number_of_tests']
+    cum_tests = counties['cumulative_number_of_tests']  
+    if date == two_day_str:
+      cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
+    elif date == one_day_str:
+      cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
 
-pct_pos = df["% Positive"]= (df["All Positives"] / df["All Tests"] * 100)
+  fw.close()
 
-sur_cnt = df[df["County"].isin(["Delaware", "Sullivan", "Ulster", "Orange", "Greene", "Rockland"])]
+make_csv()
 
-p_test = sur_cnt.plot_bokeh.bar(x = 'County', y = ['New Tests', 'New Positives'], colormap = ['orange','red'],
-                       title = 'New Tests - Sullivan County Area', xlabel = 'County', ylabel ='Tests/Cases',
-                       figsize=(800, 600), zooming = False, panning = False, show_figure = False,
-                        hovertool_string="""<h2> @{County} County</h2> 
-                        <h3> New Tests: @{New Tests} </h3>
-                        <h3> New Positives: @{New Positives} </h3>
-                        <h3> Percentage Positives: @{% Positive} % </h3>""",)
+def plots():
+  df = pd.read_csv("County Stats.csv")
 
-p_case = sur_cnt.plot_bokeh.bar(x = 'County', y = ['New Positives'], colormap = ['red','orange'],
-                       title = 'New Positive - Sullivan County Area', xlabel = 'County', ylabel ='New Positives',
-                       figsize=(800, 600), zooming = False, panning = False,  show_figure = False,
-                       hovertool_string="""<h2> @{County} County</h2> 
-                        <h3> New Positives: @{New Positives} </h3>
-                        <h3> Percentage Positives: @{% Positive} % </h3>""",)
+  pct_pos = df["% Positive"]= (df["All Positives"] / df["All Tests"] * 100)
 
-plot = pb.plot_grid([[p_case, p_test]], plot_width=800, plot_height=600)
+  sur_cnt = df[df["County"].isin(["Delaware", "Sullivan", "Ulster", "Orange", "Greene", "Rockland"])]
 
-save(plot, filename='//discovery14/CovidHeatMap/status/Sullivan COVID Status.html')
+  p_test = sur_cnt.plot_bokeh.bar(x='County', y=['New Positives', 'New Tests'], colormap=['red', 'orange'],
+                                  title='New Tests - Sullivan County Area, Data as of: ' + t_str, xlabel='County', ylabel='Tests/Cases',
+                                  figsize=(800, 600), zooming=False, panning=False, show_figure=False, stacked=True,
+                                  hovertool_string="""<h2> @{County} County</h2> 
+                          <h3> New Tests: @{New Tests} </h3>
+                          <h3> New Positives: @{New Positives} </h3>
+                          <h3> Percentage Positives: @{% Positive} % </h3>""", alpha=0.6,)
 
-p_all = df.plot_bokeh.bar(x = 'County', y = ['New Positives'], colormap = ['red','orange'],
-                       title = 'New Positive - Sullivan County Area', xlabel = 'County', ylabel ='New Positives',
-                       figsize=(1600, 800), zooming = False, panning = False, show_figure = False,
-                       hovertool_string="""<h2> @{County} County</h2> 
-                        <h3> New Positives: @{New Positives} </h3>
-                        <h3> Percentage Positives: @{% Positive} % </h3>""",)
+  p_pct = sur_cnt.plot_bokeh.bar(x='County',  y=['% Positive'], stacked=False, normed=100, colormap=['red', 'orange'],
+                                 title='Percentage Positive Sullivan County Area, Data as of: ' + t_str, xlabel='County', ylabel='Tests/Cases',
+                                 figsize=(800, 600), zooming=False, panning=False, show_figure=False,
+                                 hovertool_string="""<h2> @{County} County</h2> 
+                          <h3> All Positives: @{All Positives} </h3>
+                          <h3> Percentage Positives: @{% Positive} % </h3>""", alpha=0.6)
 
-p_all.xaxis.major_label_orientation = pi/4
+  plot = pb.plot_grid([[p_pct, p_test]], plot_width=800, plot_height=600)
 
-save(p_all, filename='//discovery14/CovidHeatMap/status/NYS COVID Status.html')
+  output_file('Sullivan COVID Status.html')
+  save(plot, filename='status/Sullivan COVID Status.html')
+
+  p_all = df.plot_bokeh.bar(x='County', y=['New Positives', 'New Tests'], colormap=['red', 'orange'],
+                            title='Testing Status - NY State, Data as of: ' + t_str, xlabel='County', ylabel='New Positives',
+                            figsize=(1600, 800), zooming=False, panning=False, show_figure=True,
+                            hovertool_string="""<h2> @{County} County</h2> 
+                          <h3> New Positives: @{New Positives} </h3>
+                          <h3> Percentage Positives: @{% Positive} % </h3>""", stacked=True, alpha=0.6)
+
+  p_all.xaxis.major_label_orientation = pi/4
+
+  output_file('NYS COVID Status.html')
+  save(p_all, filename='status/NYS COVID Status.html')
+
+if __name__ == "__main__":
+  plots()
