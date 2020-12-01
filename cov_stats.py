@@ -101,7 +101,7 @@ def plots():
                           <h3> All Positives: @{All Positives} </h3>
                           <h3> Percentage Positives: @{% Positive} % </h3>""", alpha=0.6)
 
-  plot = pb.plot_grid([[p_pct, p_test]], plot_width=800, plot_height=600)
+  plot = pb.plot_grid([[p_test, p_pct]], plot_width=800, plot_height=600)
 
   output_file('Sullivan COVID Status.html')
   save(plot, filename='status/Sullivan COVID Status.html')
