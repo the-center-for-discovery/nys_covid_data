@@ -61,28 +61,21 @@ def get_json():
 
 def make_csv():
 
-  filename = "County Stats.csv"
-  fw = open(filename, 'w')
-  cf = csv.writer(fw, lineterminator='\n')
+    filename = "County Stats.csv"
+    with open(filename, 'w') as fw:
+        cf = csv.writer(fw, lineterminator='\n')
+        # write the header
+        cf.writerow(["County", "New Positives", "All Positives", "New Tests", "All Tests"])
 
-  cd = csv.writer(fw, lineterminator='\n')
-
-  # write the header
-  cf.writerow(["County", "New Positives", "All Positives", "New Tests", "All Tests"])
-
-  for counties in get_json():
-    cnty = counties['county']
-    date = counties['test_date']
-    new_pos = counties['new_positives']
-    cum_pos = counties['cumulative_number_of_positives']
-    new_tests = counties['total_number_of_tests']
-    cum_tests = counties['cumulative_number_of_tests']  
-    if date == two_day_str:
-      cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
-    elif date == one_day_str:
-      cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
-
-  fw.close()
+        for counties in get_json():
+            date = counties['test_date']
+            if date in [two_day_str, one_day_str]:
+                cnty = counties['county']
+                new_pos = counties['new_positives']
+                cum_pos = counties['cumulative_number_of_positives']
+                new_tests = counties['total_number_of_tests']
+                cum_tests = counties['cumulative_number_of_tests']
+                cf.writerow([cnty, new_pos, cum_pos, new_tests, cum_tests])
 
 make_csv()
 
@@ -113,7 +106,7 @@ def plots():
   output_file('Sullivan COVID Status.html')
   save(plot, filename='status/Sullivan COVID Status.html')
 
-  p_all = df.plot_bokeh.bar(x='County', y=['New Positives', 'New Tests'], colormap=['red', 'orange'],
+  p_all = df.plot_bokeh.bar(x='County', y=['New Positives'], colormap=['red', 'orange'],
                             title='Testing Status - NY State, Data as of: ' + t_str, xlabel='County', ylabel='New Positives',
                             figsize=(1600, 800), zooming=False, panning=False, show_figure=True,
                             hovertool_string="""<h2> @{County} County</h2> 
