@@ -26,18 +26,22 @@ class EST5EDT(datetime.tzinfo):
     def tzname(self, dt):
         return 'EST5EDT'
 
-
 t_est = datetime.datetime.now(tz=EST5EDT())
 t_str = t_est.strftime("%Y-%m-%d, %H:%M:%S")
 
-two_days = datetime.datetime.today() - datetime.timedelta(days=2)
 one_day = datetime.datetime.today() - datetime.timedelta(days=1)
+two_days = datetime.datetime.today() - datetime.timedelta(days=2)
+thr_days = datetime.datetime.today() - datetime.timedelta(days=3)
 
-two_day_str = two_days.strftime("%Y-%m-%dT00:00:00.000")
 one_day_str = one_day.strftime("%Y-%m-%dT00:00:00.000")
+two_day_str = two_days.strftime("%Y-%m-%dT00:00:00.000")
+thr_day_str = thr_days.strftime("%Y-%m-%dT00:00:00.000")
 
-url_two = 'https://health.data.ny.gov/resource/xdss-u53e.json?test_date=' + two_day_str
 url_one = 'https://health.data.ny.gov/resource/xdss-u53e.json?test_date=' + one_day_str
+url_two = 'https://health.data.ny.gov/resource/xdss-u53e.json?test_date=' + two_day_str
+url_thr = 'https://health.data.ny.gov/resource/xdss-u53e.json?test_date=' + thr_day_str
+
+url_lst = [url_one,url_two,url_thr]
 
 def get_json():
   with request.urlopen(url_one) as response:
@@ -56,8 +60,12 @@ def get_json():
 
   with open('covid.json') as json_data:
       d = json.load(json_data)
-
+      print(d)
   return d
+
+# def get_7day():
+# for url in url_lst:
+#   print
 
 def make_csv():
 
@@ -82,9 +90,9 @@ make_csv()
 def plots():
   df = pd.read_csv("County Stats.csv")
 
-  pct_pos = df["% Positive"]= (df["All Positives"] / df["All Tests"] * 100)
-
+  pct_pos = df["% Positive"]= (df["New Positives"] / df["New Tests"] * 100)
   sur_cnt = df[df["County"].isin(["Delaware", "Sullivan", "Ulster", "Orange", "Greene", "Rockland"])]
+  print(sur_cnt)
 
   p_test = sur_cnt.plot_bokeh.bar(x='County', y=['New Positives', 'New Tests'], colormap=['red', 'orange'],
                                   title='New Tests - Sullivan County Area, Data as of: ' + t_str, xlabel='County', ylabel='Tests/Cases',
@@ -106,10 +114,27 @@ def plots():
   output_file('Sullivan COVID Status.html')
   save(plot, filename='status/Sullivan COVID Status.html')
 
+  sul = sul.pivot_table(index='Date',columns='County',values='% Positive',)
+
+  p = sul.plot_bokeh(kind="line", figsize = (1600,800), alpha = 0.8, panning = False, zooming = False, ylim = (0,10), show_average = True,
+                      xlabel = "Date", ylabel = '% Positive', title = "Percentage Positve - Rolling 7 Days")
+
+  # p.xaxis.major_label_orientation = pi/4
+
+  low_box = BoxAnnotation(top=4.9, fill_alpha=0.1, fill_color='green')
+  mid_box = BoxAnnotation(bottom = 4.9, top=5.1, fill_alpha=0.1, fill_color='orange')
+  high_box = BoxAnnotation(bottom=5.1, fill_alpha=0.1, fill_color='red')
+  p.add_layout(low_box)
+  p.add_layout(mid_box)
+  p.add_layout(high_box)
+
+  output_file('Over Time.html')
+  save(p, filename='Over Time.html')
+
   p_all = df.plot_bokeh.bar(x='County', y=['New Positives'], colormap=['red', 'orange'],
                             title='Testing Status - NY State, Data as of: ' + t_str, xlabel='County', ylabel='New Positives',
                             figsize=(1600, 800), zooming=False, panning=False, show_figure=True,
-                            hovertool_string="""<h2> @{County} County</h2> 
+                            hovertool_string="""<h2> @{County} County</h2>
                           <h3> New Positives: @{New Positives} </h3>
                           <h3> Percentage Positives: @{% Positive} % </h3>""", stacked=True, alpha=0.6)
 
@@ -117,6 +142,7 @@ def plots():
 
   output_file('NYS COVID Status.html')
   save(p_all, filename='status/NYS COVID Status.html')
+
 
 if __name__ == "__main__":
   plots()
