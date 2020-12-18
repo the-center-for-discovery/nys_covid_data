@@ -60,12 +60,11 @@ def get_json():
 
   with open('covid.json') as json_data:
       d = json.load(json_data)
-      print(d)
   return d
 
 def make_csv():
 
-    filename = "County Stats.csv"
+    filename = "base_files/County Stats.csv"
     with open(filename, 'w') as fw:
         cf = csv.writer(fw, lineterminator='\n')
         # write the header
@@ -86,9 +85,8 @@ make_csv()
 def plots():
   df = pd.read_csv("County Stats.csv")
 
-  pct_pos = df["% Positive"] = (df["New_Positives"] / df["New_Tests"] * 100)
+  pct_pos = df["Positive"]= (df["New_Positives"] / df["New_Tests"] * 100)
   sur_cnt = df[df["County"].isin(["Delaware", "Sullivan", "Ulster", "Orange", "Greene", "Rockland"])]
-  print(sur_cnt)
 
   p_test = sur_cnt.plot_bokeh.bar(x='County', y=['New_Positives', 'New_Tests'], colormap=['red', 'orange'],
                                   title='New_Tests - Sullivan County Area, Data as of: ' + t_str, xlabel='County', ylabel='Tests/Cases',
@@ -96,43 +94,26 @@ def plots():
                                   hovertool_string="""<h2> @{County} County</h2> 
                           <h3> New_Tests: @{New_Tests} </h3>
                           <h3> New_Positives: @{New_Positives} </h3>
-                          <h3> Percentage Positives: @{% Positive} % </h3>""", alpha=0.6,)
+                          <h3> Percentage Positives: @{Positive} % </h3>""", alpha=0.6,)
 
-  p_pct = sur_cnt.plot_bokeh.bar(x='County',  y=['% Positive'], stacked=False, normed=100, colormap=['red', 'orange'],
+  p_pct = sur_cnt.plot_bokeh.bar(x='County',  y=['Positive'], stacked=False, normed=100, colormap=['red', 'orange'],
                                  title='Percentage Positive Sullivan County Area, Data as of: ' + t_str, xlabel='County', ylabel='Tests/Cases',
                                  figsize=(800, 600), zooming=False, panning=False, show_figure=False,
                                  hovertool_string="""<h2> @{County} County</h2> 
                           <h3> All_Positives: @{All_Positives} </h3>
-                          <h3> Percentage Positives: @{% Positive} % </h3>""", alpha=0.6)
+                          <h3> Percentage Positives: @{Positive} % </h3>""", alpha=0.6)
 
   plot = pb.plot_grid([[p_test, p_pct]], plot_width=800, plot_height=600)
 
   output_file('Sullivan COVID Status.html')
   save(plot, filename='status/Sullivan COVID Status.html')
 
-  sul = sul.pivot_table(index='Date',columns='County',values='% Positive',)
-
-  p = sul.plot_bokeh(kind="line", figsize = (1600,800), alpha = 0.8, panning = False, zooming = False, ylim = (0,10), show_average = True,
-                      xlabel = "Date", ylabel = '% Positive', title = "Percentage Positve - Rolling 7 Days")
-
-  # p.xaxis.major_label_orientation = pi/4
-
-  low_box = BoxAnnotation(top=4.9, fill_alpha=0.1, fill_color='green')
-  mid_box = BoxAnnotation(bottom = 4.9, top=5.1, fill_alpha=0.1, fill_color='orange')
-  high_box = BoxAnnotation(bottom=5.1, fill_alpha=0.1, fill_color='red')
-  p.add_layout(low_box)
-  p.add_layout(mid_box)
-  p.add_layout(high_box)
-
-  output_file('Over Time.html')
-  save(p, filename='Over Time.html')
-
   p_all = df.plot_bokeh.bar(x='County', y=['New_Positives'], colormap=['red', 'orange'],
                             title='Testing Status - NY State, Data as of: ' + t_str, xlabel='County', ylabel='New_Positives',
                             figsize=(1600, 800), zooming=False, panning=False, show_figure=True,
                             hovertool_string="""<h2> @{County} County</h2>
                           <h3> New_Positives: @{New_Positives} </h3>
-                          <h3> Percentage Positives: @{% Positive} % </h3>""", stacked=True, alpha=0.6)
+                          <h3> Percentage Positives: @{Positive} % </h3>""", stacked=True, alpha=0.6)
 
   p_all.xaxis.major_label_orientation = pi/4
 
