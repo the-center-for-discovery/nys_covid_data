@@ -144,7 +144,7 @@ def df100():
 
     return sul100
 
-def plot():
+def plot_lines():
     """
     Create line graph for rolling dataset
     
@@ -176,4 +176,4 @@ def plot():
     save(p100, filename='status/100days.html')
 
 if __name__ == "__main__":
-    plot()
+    plots()

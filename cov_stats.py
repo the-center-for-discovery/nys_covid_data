@@ -7,6 +7,8 @@ import urllib.request as request
 from bokeh.plotting import figure, output_file, show, save
 from bokeh.models import HoverTool
 from math import pi
+from rolling import *
+from nys_covid_map import *
 
 class EST5EDT(datetime.tzinfo):
 
@@ -82,8 +84,8 @@ def make_csv():
 
 make_csv()
 
-def plots():
-  df = pd.read_csv("County Stats.csv")
+def plot_bar():
+  df = pd.read_csv("base_files/County Stats.csv")
 
   pct_pos = df["Positive"]= (df["New_Positives"] / df["New_Tests"] * 100)
   sur_cnt = df[df["County"].isin(["Delaware", "Sullivan", "Ulster", "Orange", "Greene", "Rockland"])]
@@ -122,4 +124,6 @@ def plots():
 
 
 if __name__ == "__main__":
-  plots()
+  plot_bar()
+  plot_lines()
+  plot_map()
